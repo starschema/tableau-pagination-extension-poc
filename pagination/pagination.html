@@ -1,0 +1,83 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Filtering Sample</title>
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" >
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" ></script>
+
+    <!-- Extensions Library (this will be hosted on a CDN eventually) -->
+    <script src="../lib/tableau-extensions-0.6.1.js"></script>
+
+    <!-- Our extensions's code -->
+    <script src="pagination.js"></script>
+      <style>
+          body { background-color: #f1f1f1; font-family: "Benton Sans", "Helvetica Neue", "Helvetica", sans-serif;}
+      </style>
+  </head>
+  <body>
+    <div class="container">
+      <div id="pagination">
+
+          <div class="row">
+
+              <div class="col-xs-6">
+                  <select id="filters-dropdown" class="form-control">
+
+                  </select>
+              </div>
+
+              <div class="col-xs-6">
+                  <!--<span id="field-name"></span>-->
+                  <button id='prev-value' class="btn btn-sm btn-default">&larr;</button>
+                  <span id="current-page"></span>
+                  <button id='next-value' class="btn btn-sm btn-default">&rarr;</button>
+
+                  <label for="page-count">Pages:</label>
+                  <input type="number" id="page-count" min=1 max=128 value="16" />
+
+                  <label for="page-count">Animate:</label>
+                  <input type="checkbox" id="should-autoplay" />
+              </div>
+          </div>
+      </div>
+        <!-- Filters Table -->
+        <!--<div id="filters">-->
+        <!--&lt;!&ndash;<h4>Current Filters</h4>&ndash;&gt;-->
+        <!--<div class="table-responsive">-->
+        <!--<table id="loading" class="table">-->
+        <!--<tbody><tr><td>Loading...</td></tr></tbody>-->
+        <!--</table>     -->
+        <!--<table id="filtersTable" class="table table-striped hidden">-->
+        <!--<thead>-->
+        <!--&lt;!&ndash;<tr>&ndash;&gt;-->
+        <!--&lt;!&ndash;<th>Filtered Field</th>&ndash;&gt;-->
+        <!--&lt;!&ndash;<th>Filtered Worksheet</th>&ndash;&gt;-->
+        <!--&lt;!&ndash;<th>Filter Type</th>&ndash;&gt;-->
+        <!--&lt;!&ndash;<th style="width: 100%">Current Values</th>&ndash;&gt;-->
+        <!--&lt;!&ndash;</tr>&ndash;&gt;-->
+        <!--</thead>-->
+        <!--<tbody>-->
+        <!--</tbody>-->
+        <!--</table>-->
+        <!--<table id="noFiltersWarning" class="table bg-danger hidden">-->
+        <!--<tbody><tr><td>There are no filters currently active in this dashboard.</td></tr></tbody>-->
+        <!--</table>-->
+        <!--</div>-->
+        <!--</div>-->
+
+      <!-- New Settings Submission Form -->
+      <!--<div id="filterActions">-->
+        <!--<button id="clear" type="button" class="btn btn-primary">Clear All</button>-->
+      <!--</div>-->
+    </div>
+  </body>
+</html>
