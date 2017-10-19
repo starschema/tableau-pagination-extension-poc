@@ -48,8 +48,8 @@ let t = {
       {value          : 12.5,
         formattedValue: "12.500"
       },
-      {value          : "Hello world",
-        formattedValue: "Hello world"
+      {value          : "Hello world 1",
+        formattedValue: "Hello world 1"
       },
       {value          : new Date(),
         formattedValue: "..."
@@ -66,8 +66,8 @@ let t = {
       {value          : 18.5,
         formattedValue: "12.500"
       },
-      {value          : "Hello world",
-        formattedValue: "Hello world"
+      {value          : "Hello world 2",
+        formattedValue: "Hello world 2"
       },
       {value          : new Date(),
         formattedValue: "..."
@@ -84,8 +84,8 @@ let t = {
       {value          : 13.5,
         formattedValue: "12.500"
       },
-      {value          : "Hello world",
-        formattedValue: "Hello world"
+      {value          : "Hello world 3",
+        formattedValue: "Hello world 3"
       },
       {value          : new Date(Date.parse("2017-10-19T22:07:49.177Z")),
         formattedValue: "..."

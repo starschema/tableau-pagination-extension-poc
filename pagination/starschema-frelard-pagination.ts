@@ -192,7 +192,7 @@ export namespace starschema.frelard.pagination {
         else if (pageStart > (len - 1)) { pageStart = len - 1; }
 
         pageStart = Math.floor(pageStart);
-        pageEnd = Math.floor(pageEnd);
+        pageEnd = Math.ceil(pageEnd);
 
         if (pageEnd < 0) { pageEnd = 0; }
         else if (pageEnd > (len - 1)) { pageEnd = len - 1; }
@@ -202,7 +202,7 @@ export namespace starschema.frelard.pagination {
             case "string":
                 return {
                     kind: "categorical-filter-setting",
-                    filterValues: col.values.slice(pageStart, pageEnd),
+                    filterValues: col.values.slice(pageStart, pageEnd + 1),
                 };
 
             case "number":

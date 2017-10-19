@@ -88,7 +88,7 @@ var starschema;
                     pageStart = len - 1;
                 }
                 pageStart = Math.floor(pageStart);
-                pageEnd = Math.floor(pageEnd);
+                pageEnd = Math.ceil(pageEnd);
                 if (pageEnd < 0) {
                     pageEnd = 0;
                 }
@@ -100,7 +100,7 @@ var starschema;
                     case "string":
                         return {
                             kind: "categorical-filter-setting",
-                            filterValues: col.values.slice(pageStart, pageEnd),
+                            filterValues: col.values.slice(pageStart, pageEnd + 1),
                         };
                     case "number":
                         return {
