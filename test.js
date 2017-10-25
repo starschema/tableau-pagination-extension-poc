@@ -72,7 +72,7 @@ let t = {
       {value          : new Date(),
         formattedValue: "..."
       },
-      {value          : new Date(),
+      {value          : new Date()  ,
         formattedValue: "..."
       }
     ],

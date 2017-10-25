@@ -1,4 +1,3 @@
-
 export namespace starschema.frelard.pagination {
 
     export namespace wrap {
