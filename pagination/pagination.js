@@ -8,95 +8,33 @@
     $l.html($l.html() + "<br/>" + str);
   }
 
-
+  // attempts to execute fn and return its result or logs any exceptinos thrown
+  // and return null
+  function logErrors(fn) {
+    try {
+      return fn();
+    } catch (e) {
+      addToLog(`Error: ${e} -- ${e.stack}`);
+      return null;
+    }
+  }
 
   let unregisterHandlerFunctions = [];
   //let pagination = require(
   //    "./pagination/starschema-frelard-pagination").
 
-  let step_count      = 16;
-  let current_page    = 0;
-  let selected_filter = {
-    field_name: "Order Date",
-    kind      : "date",
-    min       : 0,
-    max       : 1000,
-    is_dummy  : true
-  };
-
-  let is_playing = false;
-
-  function update_selected_filter_field(sf) {
-
-    // remove if not dummy
-    if (!selected_filter.is_dummy) {
-      let old         = selected_filter;
-      const dashboard = tableau.extensions.dashboardContent.dashboard;
-
-      // Then loop through each worksheet and get its filters, save promise for
-      // later.
-      dashboard.worksheets.forEach(function(worksheet) {
-        // restore old filter for field
-        worksheet.applyRangeFilterAsync(old.field_name,
-                                        {min: old.min, max: old.max});
-      });
-    }
-
-    // set new as a copy
-    selected_filter = Object.assign({}, sf);
-
-    // display the field name
-    $("#field-name").text(selected_filter.field_name);
-  }
-
-  function change_selected_filter_page(new_page) {
-    let sf = selected_filter;
-
-    // create ranges
-    let step_size = (sf.max - sf.min) / step_count;
-    // clip
-    if (new_page >= step_count) { new_page = step_count - 1; }
-    else if (new_page < 0) { new_page = 0; }
-
-    if (!sf.is_dummy) {
-
-      // create bounds
-      let min = sf.min + (new_page * step_size);
-      let max = sf.min + ((new_page + 1) * step_size);
-
-      if (sf.kind === "date") {
-        min = new Date(min);
-        max = new Date(max);
-      }
-
-      /// apply
-      const dashboard = tableau.extensions.dashboardContent.dashboard;
-
-      // Then loop through each worksheet and get its filters, save promise for
-      // later.
-      dashboard.worksheets.forEach(function(worksheet) {
-        // restore old filter for field
-        worksheet.applyRangeFilterAsync(sf.field_name, {min: min, max: max});
-      });
-    }
-
-    current_page = new_page;
-
-    // update the counter
-    $("#current-page").text(new_page);
-  }
-
   function hook_pagination_handler(paginationData) {
 
-    let is_playing = false;
     let playback_delay = 1000;
 
-    let currentTargetSheetIdx = -1;
+    let currentTargetSheetIdx  = -1;
     let currentTargetColumnIdx = -1;
-    let currentTarget = null;
+    let currentTarget          = null;
 
-    let page_count = 16;
+    let page_count   = 16;
     let current_page = 1;
+
+    let current_data_type = null;
 
     function onNext(e) {
       //addToLog("Next!" + "cp=" + current_page + " -- pc=" + page_count);
@@ -104,7 +42,7 @@
       //addToLog("Next 1- " + current_page);
       current_page = current_page + 1;
       //addToLog("Next 2- " + current_page);
-      setFilterPage(page_count, current_page);
+      setFilterPage(current_data_type, page_count, current_page);
       //addToLog("Next -- " + current_page);
       return false;
     }
@@ -113,7 +51,7 @@
       //addToLog("Prev!");
       if (current_page <= 0) { return false; }
       current_page--;
-      setFilterPage(page_count, current_page);
+      setFilterPage(current_data_type, page_count, current_page);
       //addToLog("Prev -- " + current_page);
       return false;
     }
@@ -127,45 +65,39 @@
         if (v < 1) v = 1;
         if (v > 128) v = 128;
 
-        //step_count = v;
         page_count = v;
         if (current_page >= page_count) { current_page = page_count - 1; }
 
-        setFilterPage(page_count, current_page );
+        setFilterPage(current_data_type, page_count, current_page);
         //change_selected_filter_page(current_page);
       }
     });
 
-
-
     $("#autoplay-selector").on("change", function() {
-      //try {
+      playback_delay = parseInt(this.value);
+      //addToLog("Setting autoplay delay to" + playback_delay);
 
-        playback_delay = parseInt(this.value);
-        //addToLog("Setting autoplay delay to" + playback_delay);
+      if (playback_delay > 33) {
+        // defer the update for this
+        setTimeout(on_tick, 25);
+      }
 
-        if (playback_delay > 33) {
-          // defer the update for this
-          setTimeout(on_tick, 25);
-        }
+    });
 
-      //} catch (e) {
-      //  addToLog("Error on autoplay change: " + e + "  " + e.stack);
-      //}
-
+    // Stop the animation if the STOP button is pressed
+    $("#stop-animation").on("click", function() {
+      playback_delay = 0;
     });
 
     function on_tick() {
 
-
-      if (playback_delay > 0) {
+      if (playback_delay > 33) {
         current_page = (current_page + 1) % page_count;
-        setFilterPage(page_count, current_page);
+        setFilterPage(current_data_type, page_count, current_page);
         setTimeout(on_tick, playback_delay);
       }
 
     }
-
 
     function clearCurrentFilters(currentTarget) {
 
@@ -178,81 +110,189 @@
       });
     }
 
+    // generates a setter using a string parser function
+    function setterFnUsingParser(parserFn) {
+
+      return function(worksheet, field, filterData) {
+        logErrors(function() {
+
+          let len = filterData.filterValues.length;
+          // dont do anything if no filterdata
+          if (len === 0) {
+            return;
+          }
+
+          // use the parser on the first and last element of the filter value
+          // string
+          let first        = filterData.filterValues[0];
+          let last         = filterData.filterValues[len - 1];
+          let parsedFilter = {
+            min       : parserFn(first),
+            max       : parserFn(last),
+            //nullOption: "non-null-values"
+          };
+
+          //addToLog("Setting range filter for field: " + field +
+          //    JSON.stringify(parsedFilter));
+          worksheet.applyRangeFilterAsync(field, parsedFilter);
+        });
+      };
+    }
 
     // updates the filter page for the target
-    function setFilterPage(page_count, idx) {
-      //addToLog("setFilterPage px=" + page_count + "   idx=" + idx + " -- current:" + JSON.stringify(currentTarget.name) );
-      //addToLog("Setting filter " + currentTarget.name + " : " + page_count + " / " + idx + " -- " + JSON.stringify(currentTarget.values) );
-      let filterData = starschema.frelard.pagination.toFilter(page_count, idx, currentTarget);
-      //addToLog("Data is:" + JSON.stringify(filterData));
-      const dashboard = tableau.extensions.dashboardContent.dashboard;
-      dashboard.worksheets.forEach(function(worksheet) {
+    function setFilterPage(current_data_type, page_count, idx) {
 
-        if (filterData.kind === "range-filter-setting") {
-          //addToLog("Setting range filter for sheet" + worksheet.name );
-          worksheet.applyRangeFilterAsync(currentTarget.name, filterData);
-        } else if (filterData.kind === 'categorical-filter-setting') {
-          //addToLog("Setting categorical filter for sheet" + worksheet.name );
-          worksheet.applyFilterAsync( currentTarget.name, filterData.filterValues, "replace", {} );
+      try {
+        // If the current data type is not yet set then do nothing (not even
+        // updating the index)
+        if (!current_data_type) {
+          addToLog("Skipping filter page change because no datatype is set");
+          return;
         }
+        //addToLog(`Setting filter page using data type: ${ current_data_type }`);
 
-      });
+        //let setterFn = function(worksheet, field, filterData) {
+        //  throw new Error(`No setter defined for field: '${field}'`)
+        //};
+        let setterFn = function(worksheet, field, filterData) {
+          worksheet.applyFilterAsync(field, filterData.filterValues,
+                                     "replace", {});
+        };
 
+        let filterData = starschema.frelard.pagination.toFilter(page_count, idx,
+                                                                currentTarget);
+        //addToLog("Type is:" + currentTarget.valueType);
+        //addToLog("Data is:" + JSON.stringify(filterData));
+
+        //if (filterData.valueType === "string") {
+        switch (current_data_type) {
+            // for strings use simple categorical filtering
+
+          case "number":
+            //addToLog("Using NUMBER setter")
+            setterFn = setterFnUsingParser(parseInt);
+            //// For numbers convert to lower and upper bound floats and use
+            // range filter setterFn = function(worksheet, field, filterData) {
+            // logErrors(function() { addToLog("Setting range filter for field:
+            // " + field, JSON.stringify(filterData)); let parsedFilter = { min
+            //       : parseInt(filterData.min), max       :
+            // parseInt(filterData.max), nullOption: "non-null-values", };
+            // worksheet.applyRangeFilterAsync(field, parsedFilter); }); };
+            break;
+
+            // for dates we parse them then convert them to Date objects
+          case "date":
+            //addToLog("Using DATE setter")
+            setterFn = setterFnUsingParser(v => new Date(Date.parse(v)));
+            //setterFn = function(worksheet, field, filterData) {
+            //  logErrors(function() {
+            //    addToLog("Setting range filter for field: " + field,
+            //        JSON.stringify(filterData));
+            //
+            //    // dont do anything if no filterdata
+            //    if (filterData.values.length === 0) {
+            //      return;
+            //    }
+            //    let first = filterData.values[0];
+            //    let last = filterData.values[filterData.values.length-1];
+            //    let parsedFilter = {
+            //      min       : new Date(Date.parse(first)),
+            //      max       : new Date(Date.parse(last)),
+            //      nullOption: "non-null-values",
+            //    };
+            //    worksheet.applyRangeFilterAsync(field, parsedFilter);
+            //  });
+            //};
+            break;
+
+        }
+        //}
+        //addToLog("setFilterPage px=" + page_count + "   idx=" + idx + " --
+        // current:" + JSON.stringify(currentTarget.name) ); addToLog("Setting
+        // filter " + currentTarget.name + " : " + page_count + " / " + idx + "
+        // -- " + JSON.stringify(currentTarget.values) );
+        const dashboard = tableau.extensions.dashboardContent.dashboard;
+        dashboard.worksheets.forEach(function(worksheet) {
+
+          //addToLog("Calling setter for sheet" + worksheet.name);
+          setterFn(worksheet, currentTarget.name, filterData);
+
+          //if (filterData.kind === "range-filter-setting") {
+          //  //addToLog("Setting range filter for sheet" + worksheet.name );
+          //  addToLog("Setting range filter for sheet" + worksheet.name,
+          // JSON.stringify(filterData) );
+          // worksheet.applyRangeFilterAsync(currentTarget.name, filterData); }
+          // else if (filterData.kind === 'categorical-filter-setting') {
+          // worksheet.applyFilterAsync( currentTarget.name,
+          // filterData.filterValues, "replace", {} ); }
+
+        });
+      } catch (e) {
+        addToLog("[ERROR] " + e + " -- " + e.stack);
+      }
 
       // update the counter
       $("#current-page").text("Page=" + idx);
     }
 
-
-
     function setTargetField(sheetId, colIdx) {
       //addToLog("Setting target field to: " + sheetId + " /  " + colIdx);
       // skip if the same
-      if (currentTargetSheetIdx === sheetId && currentTargetColumnIdx === colIdx) {
+      if (currentTargetSheetIdx === sheetId &&
+          currentTargetColumnIdx === colIdx) {
         //addToLog("Skipping duplicate")
         return;
       }
 
       // bounds check
-      if (sheetId >= paginationData.length || colIdx >= paginationData[sheetId].length) {
-        addToLog("[ERROR] - sheet index of column index out of bounds -- " + Object.keys(paginationData));
+      if (sheetId >= paginationData.length ||
+          colIdx >= paginationData[sheetId].length) {
+        addToLog("[ERROR] - sheet index of column index out of bounds -- " +
+            Object.keys(paginationData));
         return;
       }
 
       clearCurrentFilters();
 
-
-      currentTargetSheetIdx = sheetId;
+      currentTargetSheetIdx  = sheetId;
       currentTargetColumnIdx = colIdx;
 
       currentTarget = paginationData[sheetId][colIdx];
 
-
-
-      // jump to the first page
-      setFilterPage(step_count, 0);
     }
 
-
     // hook the select's event handler
-    $('#filters-dropdown').on('change', function(e){
-      if (this.value === '---') {
-        e.preventDefault();
+    $("#filters-dropdown").on("change", function(e) {
+      if (this.value === "---") {
         return;
       }
 
       try {
 
         let val = JSON.parse(this.value);
-        setTargetField(val[0], val[1])
+        setTargetField(val[0], val[1]);
 
       } catch (e) {
         addToLog("ERROR: " + e + " -- " + e.stack);
       }
     });
 
-    //setTargetField(0, 0);
+    // update the interpreted type
+    $("input[type=radio][name=\"interpret-as\"]").on("change", function() {
+      current_data_type = this.value;
+      // re-paint after change
+      setFilterPage(current_data_type, page_count, current_page);
 
+    });
+
+    //$('#as-date').on('click', function(e) {
+    //  current_data_type = 'date';
+    //
+    //  // jump to the first page
+    //  setFilterPage(current_data_type, page_count, 0);
+    //})
+
+    //setTargetField(0, 0);
 
   }
 
@@ -260,9 +300,10 @@
 
     function getUnderlyingDataForSheet(worksheet) {
       return worksheet
+      //.getSummaryDataAsync({maxRows: 0, ignoreSelection: true})
           .getUnderlyingDataAsync({
                                     maxRows          : 0,
-                                    includeAllColumns: false
+                                    includeAllColumns: true
                                   });
     }
 
@@ -272,37 +313,40 @@
       console.log("Error while Initializing: " + err.toString());
     }
 
-
-
-
-
     tableau.extensions.initializeAsync().then(function() {
 
       showLoader();
       $("#log").html("Initializing...");
 
       const dashboard = tableau.extensions.dashboardContent.dashboard;
+
       Promise.all(dashboard.worksheets.map(getUnderlyingDataForSheet))
              .then(sheetData => {
-               addToLog(`Checking ${sheetData.length} sheets`);
+               //addToLog(`Checking ${sheetData.length} sheets`);
+
+               //// Log the data types for each column
+               //sheetData.forEach( table => table.columns.forEach(c=>
+               //    addToLog(`col ${table.name} -> ${c.fieldName} :
+               // ${c.dataType}`) ));
+
                return sheetData.map(
                    starschema.frelard.pagination.getDistinctValues);
              }, onInitError)
              .then(paginationData => {
                addToLog("Pagination data loaded...");
 
-
                let options = paginationData.reduce(
                    function(memo, pd, sheetIdx) {
                      return memo.concat(pd.map(function(col, i) {
-                       let optionLabel = `[ ${sheetIdx} / ${i} ]: ${col.name} (${col.min} -> ${col.max})`;
+                       let optionLabel = `[ ${sheetIdx} / ${i} ]: ${col.name} (${col.valueType}: min=${col.min} -> max=${col.max})`;
                        let optionValue = JSON.stringify([sheetIdx, i]);
                        return `<option value='${optionValue}'>${optionLabel}</option>`;
                      }));
                    }, []);
 
                // add to the dropdown list
-               $("#filters-dropdown").html("<option value='---'>---</option>" + options.join(""));
+               $("#filters-dropdown")
+                   .html("<option value='---'>---</option>" + options.join(""));
 
                hideLoader();
                // add the pagination handler using the current data
@@ -317,8 +361,8 @@
       console.log("Error while Initializing: " + err.toString());
     });
   });
-/*
-*/
+  /*
+  */
   //// This is a handling function that is called anytime a filter is changed in
   //// Tableau.
   //function filterChangedHandler(filterEvent) {
@@ -333,16 +377,16 @@
     $("#loading").addClass("hidden");
   }
 
-
   function showLoader() {
-    $('#loader').show();
-    $('#pagination').hide();
+    $("#loader").show();
+    $("#pagination").hide();
   }
 
   function hideLoader() {
-    $('#loader').hide();
-    $('#pagination').show();
+    $("#loader").hide();
+    $("#pagination").show();
   }
+
   //  function date_range_filter_ui(step_count, canvas) {
   //    let filter = selected_filter;
   //
