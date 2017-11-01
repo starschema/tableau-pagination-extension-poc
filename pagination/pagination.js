@@ -26,6 +26,7 @@
   function hook_pagination_handler(paginationData) {
 
     let playback_delay = 1000;
+    let isPlaying      = false;
 
     let currentTargetSheetIdx  = -1;
     let currentTargetColumnIdx = -1;
@@ -75,26 +76,42 @@
 
     $("#autoplay-selector").on("change", function() {
       playback_delay = parseInt(this.value);
+      $("#playback-delay").text(playback_delay + " ms");
       //addToLog("Setting autoplay delay to" + playback_delay);
 
-      if (playback_delay > 33) {
-        // defer the update for this
-        setTimeout(on_tick, 25);
-      }
+      //if (playback_delay > 33) {
+      // defer the update for this
+      //setTimeout(on_tick, 25);
+      //}
 
     });
 
     // Stop the animation if the STOP button is pressed
     $("#stop-animation").on("click", function() {
-      playback_delay = 0;
+      //playback_delay = 0;
+      isPlaying = false;
+    });
+
+    // Start the animation when pressing the start and trigger
+    // the first tick
+    $("#play-animation").on("click", function() {
+      //playback_delay = 0;
+      isPlaying = true;
+      on_tick();
     });
 
     function on_tick() {
 
-      if (playback_delay > 33) {
+      if (isPlaying && (playback_delay > 33)) {
         current_page = (current_page + 1) % page_count;
         setFilterPage(current_data_type, page_count, current_page);
         setTimeout(on_tick, playback_delay);
+
+        $("#stop-animation").show();
+        $("#play-animation").hide();
+      } else {
+        $("#stop-animation").hide();
+        $("#play-animation").show();
       }
 
     }
@@ -127,8 +144,8 @@
           let first        = filterData.filterValues[0];
           let last         = filterData.filterValues[len - 1];
           let parsedFilter = {
-            min       : parserFn(first),
-            max       : parserFn(last),
+            min: parserFn(first),
+            max: parserFn(last)
             //nullOption: "non-null-values"
           };
 
@@ -149,7 +166,8 @@
           addToLog("Skipping filter page change because no datatype is set");
           return;
         }
-        //addToLog(`Setting filter page using data type: ${ current_data_type }`);
+        //addToLog(`Setting filter page using data type: ${ current_data_type
+        // }`);
 
         //let setterFn = function(worksheet, field, filterData) {
         //  throw new Error(`No setter defined for field: '${field}'`)
@@ -169,62 +187,19 @@
             // for strings use simple categorical filtering
 
           case "number":
-            //addToLog("Using NUMBER setter")
             setterFn = setterFnUsingParser(parseInt);
-            //// For numbers convert to lower and upper bound floats and use
-            // range filter setterFn = function(worksheet, field, filterData) {
-            // logErrors(function() { addToLog("Setting range filter for field:
-            // " + field, JSON.stringify(filterData)); let parsedFilter = { min
-            //       : parseInt(filterData.min), max       :
-            // parseInt(filterData.max), nullOption: "non-null-values", };
-            // worksheet.applyRangeFilterAsync(field, parsedFilter); }); };
             break;
 
             // for dates we parse them then convert them to Date objects
           case "date":
-            //addToLog("Using DATE setter")
             setterFn = setterFnUsingParser(v => new Date(Date.parse(v)));
-            //setterFn = function(worksheet, field, filterData) {
-            //  logErrors(function() {
-            //    addToLog("Setting range filter for field: " + field,
-            //        JSON.stringify(filterData));
-            //
-            //    // dont do anything if no filterdata
-            //    if (filterData.values.length === 0) {
-            //      return;
-            //    }
-            //    let first = filterData.values[0];
-            //    let last = filterData.values[filterData.values.length-1];
-            //    let parsedFilter = {
-            //      min       : new Date(Date.parse(first)),
-            //      max       : new Date(Date.parse(last)),
-            //      nullOption: "non-null-values",
-            //    };
-            //    worksheet.applyRangeFilterAsync(field, parsedFilter);
-            //  });
-            //};
             break;
 
         }
-        //}
-        //addToLog("setFilterPage px=" + page_count + "   idx=" + idx + " --
-        // current:" + JSON.stringify(currentTarget.name) ); addToLog("Setting
-        // filter " + currentTarget.name + " : " + page_count + " / " + idx + "
-        // -- " + JSON.stringify(currentTarget.values) );
         const dashboard = tableau.extensions.dashboardContent.dashboard;
         dashboard.worksheets.forEach(function(worksheet) {
 
-          //addToLog("Calling setter for sheet" + worksheet.name);
           setterFn(worksheet, currentTarget.name, filterData);
-
-          //if (filterData.kind === "range-filter-setting") {
-          //  //addToLog("Setting range filter for sheet" + worksheet.name );
-          //  addToLog("Setting range filter for sheet" + worksheet.name,
-          // JSON.stringify(filterData) );
-          // worksheet.applyRangeFilterAsync(currentTarget.name, filterData); }
-          // else if (filterData.kind === 'categorical-filter-setting') {
-          // worksheet.applyFilterAsync( currentTarget.name,
-          // filterData.filterValues, "replace", {} ); }
 
         });
       } catch (e) {
@@ -285,14 +260,34 @@
 
     });
 
-    //$('#as-date').on('click', function(e) {
-    //  current_data_type = 'date';
-    //
-    //  // jump to the first page
-    //  setFilterPage(current_data_type, page_count, 0);
-    //})
+  }
 
-    //setTargetField(0, 0);
+  // Hook the mini/regular size control events
+  function setupSizeControls() {
+    let isEditorShown = true;
+
+    function updateFromSizeControls(value) {
+      if (value === isEditorShown) return;
+      isEditorShown = value;
+
+      if (isEditorShown) {
+        $(".pagination-editor").show();
+        $("#show-pagination-editor").hide();
+        $("#hide-pagination-editor").show();
+      } else {
+        $(".pagination-editor").hide();
+        $("#show-pagination-editor").show();
+        $("#hide-pagination-editor").hide();
+      }
+    }
+
+    $("#show-pagination-editor").on("click", function() {
+      updateFromSizeControls(true);
+    });
+
+    $("#hide-pagination-editor").on("click", function() {
+      updateFromSizeControls(false);
+    });
 
   }
 
@@ -312,6 +307,10 @@
       // Something went wrong in initialization.
       console.log("Error while Initializing: " + err.toString());
     }
+
+    // init the sizing controls
+    setupSizeControls();
+
 
     tableau.extensions.initializeAsync().then(function() {
 

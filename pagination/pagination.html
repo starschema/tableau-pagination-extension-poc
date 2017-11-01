@@ -36,49 +36,60 @@
         Working...
     </div>
     <div id="pagination" style="display:none">
+        <!--<div id="pagination" >-->
 
-
-        <div>
-            <select id="filters-dropdown" class="form-control"></select>
-        </div>
-
-        <div>
-            As:
-            <input type="radio" class="type-picker" id="type-as-number" value="number" name="interpret-as"/> Number
-            |
-            <input type="radio" class="type-picker" id="type-as-string" value="string" name="interpret-as"/> String
-            |
-            <input type="radio" class="type-picker" id="type-as-date" value="date" name="interpret-as"/> Date
-        </div>
-
-        <div>
+        <div class="pagination-main-controls ">
             <!--<span id="field-name"></span>-->
-            <button id='prev-value' class="btn btn-sm btn-default">&larr;</button>
-            <span id="current-page"> -- </span>
-            <button id='stop-animation' class="btn btn-sm btn-default">Stop</button>
-            <button id='next-value' class="btn btn-sm btn-default">&rarr;</button>
+            <div class="btn-group" role="group">
+                <button id='prev-value' class="btn btn-sm btn-default">&larr;</button>
+                <button id="current-page" class="btn btn-sm btn-default"> --</button>
+                <button id='stop-animation' class="btn btn-sm btn-default" style="display:none;">Stop</button>
+                <button id='play-animation' class="btn btn-sm btn-default">Play</button>
+                <button id='next-value' class="btn btn-sm btn-default">&rarr;</button>
 
+            </div>
+            <button id="show-pagination-editor" class="btn btn-xs btn-default" style="display:none;">more...</button>
+            <button id="hide-pagination-editor" class="btn btn-xs btn-default">less...</button>
         </div>
 
-        <div>
-            <label for="page-count">Pages:</label>
-            <input type="number" id="page-count" min=1 max=128 value="16"/>
+        <div class="pagination-editor">
+
+            <div>
+                <select id="filters-dropdown" class="form-control"></select>
+            </div>
+
+            <div>
+                As:
+                <input type="radio" class="type-picker" id="type-as-number" value="number" name="interpret-as"/> Number
+                |
+                <input type="radio" class="type-picker" id="type-as-string" value="string" name="interpret-as"/> String
+                |
+                <input type="radio" class="type-picker" id="type-as-date" value="date" name="interpret-as"/> Date
+            </div>
+
+            <div>
+                <label for="page-count">Pages:</label>
+                <input type="number" id="page-count" min=1 max=128 value="16"/>
+            </div>
+            <div>
+                <label for="page-count">Animate:</label>
+
+                <span id="playback-delay"></span>
+                <input type="range" id="autoplay-selector" min="2000" max="16000" step="1000" class="form-control"/>
+                <!--<select id="autoplay-selector" class="form-control">-->
+                <!--<option value="0">Off</option>-->
+                <!--<option value="2000">1/2 FPS</option>-->
+                <!--<option value="4000">1/4 FPS</option>-->
+                <!--<option value="8000">1/8 FPS</option>-->
+                <!--<option value="16000">1/16 FPS</option>-->
+
+                <!--</select>-->
+            </div>
+            <!-- New Settings Submission Form -->
+            <div id="log"></div>
+
         </div>
-        <div>
-            <label for="page-count">Animate:</label>
-
-            <select id="autoplay-selector" class="form-control">
-                <option value="0">Off</option>
-                <option value="2000">1/2 FPS</option>
-                <option value="4000">1/4 FPS</option>
-                <option value="8000">1/8 FPS</option>
-                <option value="16000">1/16 FPS</option>
-
-            </select>
-        </div>
-        <!-- New Settings Submission Form -->
-
-        <div id="log"></div>
     </div>
+</div>
 </body>
 </html>
